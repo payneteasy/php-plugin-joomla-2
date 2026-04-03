@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<extension version="2.5" type="plugin" group="vmpayment" method="upgrade">
+    <name>Payneteasy payment</name>
+    <creationDate>March 2026</creationDate>
+    <author>Payneteasy</author>
+    <authorUrl>https://payneteasy.com/</authorUrl>
+    <copyright>Copyright (C) 2026 Payneteasy. All rights reserved.</copyright>
+    <license>Property of Payneteasy</license>
+    <version>1.0.0</version>
+    <description>Payneteasy payment plugin for VirtueMart</description>
+
+    <files>
+        <filename plugin="payneteasy">payneteasy.php</filename>
+				<folder>assets</folder>
+				<folder>fields</folder>
+        <folder>language</folder>
+        <folder>lib</folder>
+    </files>
+
+    <vmconfig>
+        <fields name="params">
+            <fieldset name="api" addfieldpath="/plugins/vmpayment/payneteasy/fields">
+								<field type="vmtitle" default="PAYNETEASY_GATEWAY_SETTINGS" description=""/>
+                <field name="checkConditionsCore" value="1" default="1" type="hidden"/>
+								<field name="url_live" type="text" label="PAYNETEASY_URL_LIVE" default="https://gate.payneteasy.com/" size="48"/>
+								<field name="url_sandbox" type="text" label="PAYNETEASY_URL_SANDBOX" default="https://demo.payneteasy.com/" size="48"/>
+								<field name="is_sandbox" type="radio" label="PAYNETEASY_MODE" default="1">
+									<option value="0">PAYNETEASY_MODE_LIVE</option>
+									<option value="1">PAYNETEASY_MODE_SANDBOX</option>
+								</field>
+								<field name="end_point" type="text" label="PAYNETEASY_END_POINT" required="true"/>
+								<field name="login" type="text" label="PAYNETEASY_LOGIN" required="true"/>
+								<field name="control_key" type="text" label="PAYNETEASY_CONTROL_KEY" required="true" size="50"/>
+
+								<field type="vmtitle" default="PAYNETEASY_ADMIN_SETTINGS" description=""/>
+								<field name="log_trace" type="radio" label="PAYNETEASY_LOG_TRACE" default="0">
+									<option value="0">COM_VIRTUEMART_NO</option>
+									<option value="1">COM_VIRTUEMART_YES</option>
+								</field>
+								<field type="payneteasycss" default=""/>
+            </fieldset>
+        </fields>
+    </vmconfig>
+</extension>
