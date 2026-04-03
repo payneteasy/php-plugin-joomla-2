@@ -8,4 +8,4 @@ with VirtueMart 4.4.10
 select System -> Extensions -> "Manage Extension" -> "Upload Package File", upload plugin zipfile 
 select Components -> VirtueMart -> Payment Methods -> "New", 
 fill "Payment Name" (payneteasy), "Self Alias" (payneteasy), "Published (yes), select "Payment Method" (Payneteasy payment), click "Save"
-
+click "Configuration", fill plugin settings (URL, Endpoint ID, Login, Control key), choose Mode, then click "Save"
