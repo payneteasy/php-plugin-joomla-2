@@ -2,14 +2,14 @@
 
 defined('_JEXEC') or die;
 
-define('_PAYNETEASY_LIB_', true);
-include_once('lib' .DIRECTORY_SEPARATOR .'Api.php');
-use Payneteasy\lib as Payneteasy;
+require_once VMPATH_PLUGINLIBS .'/vmpsplugin.php';
+include_once 'Payneteasy.lib.php';
 
-require_once(VMPATH_PLUGINLIBS .'/vmpsplugin.php');
+use Payneteasy\PneApi;
+use Payneteasy\PneConfig;
 
 class plgVmPaymentPayneteasy extends vmPSPlugin {
-	private static $Api;
+	private static PneApi $Api;
 
 	public function __construct(&$subject, $config) {
 		parent::__construct($subject, $config);
@@ -21,83 +21,30 @@ class plgVmPaymentPayneteasy extends vmPSPlugin {
 		$this->setConfigParameterable($this->_configTableFieldName, $varsToPush);
 	}
 
+	public function getTableSQLFields() {
+		return [
+			'id' => 'INT UNSIGNED NOT NULL AUTO_INCREMENT',
+			'virtuemart_order_id' => 'INT UNSIGNED',
+			'virtuemart_paymentmethod_id' => 'INT UNSIGNED',
+			'payment_name' => 'VARCHAR(16)',
+			'payneteasy_order_id' => 'VARCHAR(48)',
+			'payneteasy_status' => 'VARCHAR(48)',
+			'payneteasy_descriptor' => 'VARCHAR(128)' ];
+	}
+
 	private static function _T(string $arg): string
 		{ return JText::_('PAYNETEASY_'.strtoupper($arg)); }
 
-	public function getTableSQLFields() {
-		return [
-			'id'                          => 'INT UNSIGNED NOT NULL AUTO_INCREMENT',
-			'virtuemart_order_id'         => 'INT UNSIGNED',
-			'virtuemart_paymentmethod_id' => 'INT UNSIGNED',
-			'payment_name'                => 'VARCHAR(16)',
-			'payneteasy_order_id'         => 'VARCHAR(48)',
-			'payneteasy_status'           => 'VARCHAR(48)',
-			'payneteasy_descriptor'       => 'VARCHAR(128)' ];
+	private static function Api($Method): PneApi
+		{ return self::$Api ??= new PneApi( PneConfig::fetchkey_only(fn($k) => strpos($k, 'IS_') === 0 ? (bool)($Method->$k ?? null) : ($Method->$k ?? null)) ); }
+
+	private function returnUrl(stdClass $Details): string {
+		return JRoute::_(JURI::root() .'index.php?option=com_virtuemart&view=pluginresponse&task=pluginresponsereceived'
+			."&orderId={$Details->virtuemart_order_id}&methodId={$Details->virtuemart_paymentmethod_id}");
 	}
-
-	public function plgVmConfirmedOrder(VirtueMartCart $Cart, array $aOrder) {
-		if (!($Method = $this->getVmPluginMethod($Cart->virtuemart_paymentmethod_id)))
-			return null;
-
-		if (!$this->selectedThisElement($Method->payment_element))
-			return false;
-
-		$Details = $this->Details($aOrder);
-
-		try
-			{ $aResult = self::Api($Method)->sale( $this->saleData($Cart, $Details) ); }
-		catch (Exception $e) {
-			vRequest::setVar('html', $this->updateOrder_html($Details, $Method, 'X'));
-			return null;
-		}
-
-		[ $Cart->_confirmDone, $Cart->_dataValidated ] = [ false, false ];
-		$Cart->setCartIntoSession();
-
-		$this->updateDetails($Details, $aResult);
-
-		JFactory::getApplication()->redirect($aResult['redirect-url']);
-	}
-
-	public function plgVmOnPaymentResponseReceived(string &$html) {
-		if (!($Method = $this->getVmPluginMethod( vRequest::getInt('methodId') )))
-			return null;
-
-		if (!$this->selectedThisElement($Method->payment_element))
-			return false;
-	
-		$aResult = vRequest::getPost();
-		if ($Method->log_trace)
-			Payneteasy\trace($aResult);
-
-		$aOrder = $this->aOrder( vRequest::getInt('orderId') );
-		$Details = $this->Details($aOrder, true);
-		$this->updateDetails($Details, $aResult);
-
-		$html = $this->updateOrder_html($Details, $Method, ['approved'=>'F','declined'=>'D','filtered'=>'D'][$aResult['status']] ?? 'X');
-
-		VirtueMartCart::getCart()->emptyCart();
-	}
-
-	public function plgVmOnUpdateOrderPayment(&$Order, $oldOrderStatus) {
-		if (!($Method = $this->getVmPluginMethod($Order->virtuemart_paymentmethod_id)))
-			return null;
-
-		if (!$this->selectedThisElement($Method->payment_element))
-			return false;
-	
-		return true;
-	}
-
-
-
-	private static function Api($Method)
-		{ return self::$Api ??= new Payneteasy\Api($Method->is_sandbox ? $Method->url_sandbox : $Method->url_live, $Method->login, $Method->control_key, $Method->end_point, false, $Method->log_trace); }
 
 	private function saleData(VirtueMartCart $Cart, stdClass $Details): array {
-		$ret_url = JRoute::_(JURI::root() .'index.php?option=com_virtuemart&view=pluginresponse&task=pluginresponsereceived'
-			.'&orderId=' .$Details->virtuemart_order_id
-			.'&methodId=' .$Details->virtuemart_paymentmethod_id);
+		$ret_url = $this->returnUrl($Details);
 
 		$data = [
 			'client_orderid' => $Details->order_number,
@@ -120,6 +67,15 @@ class plgVmPaymentPayneteasy extends vmPSPlugin {
 			'server_callback_url' => $ret_url ];
 
 		return $data;
+	}
+
+	private function cardData(): array {
+		return [
+			'credit_card_number' => preg_replace('/\D+/', '', vRequest::getString('credit_card_number')),
+			'card_printed_name'  => trim(vRequest::getString('card_printed_name')),
+			'expire_month'       => sprintf('%02d', vRequest::getString('expire_month')),
+			'expire_year'        => vRequest::getString('expire_year'),
+			'cvv2'               => vRequest::getString('cvv2') ];
 	}
 
 	private function Details($aOrder, bool $withPayneteasy=false): stdClass  {
@@ -156,9 +112,9 @@ class plgVmPaymentPayneteasy extends vmPSPlugin {
 		return $aOrder;
 	}
 
-	private function updateOrder_html(stdClass $Details, TablePaymentmethods $Method, string $status): string {
+	private function updateOrder_html(stdClass $Details, TablePaymentmethods $Method, string $status, bool $is_error=false): string {
 		[ $upd['virtuemart_order_id'], $upd['order_status'], $upd['customer_notified'], $upd['comments'] ]
-			= [ $Details->virtuemart_order_id, $status, (int)($status == 'F'), self::_T('PAYMENT_' .['D'=>'DECLINED','F'=>'APPROVED','X'=>'ERROR'][$status]) ];
+			= [ $Details->virtuemart_order_id, $status, (int)($status == 'F'), self::_T('PAYMENT_' .['D'=>'DECLINED','F'=>'APPROVED','E'=>'ERROR'][$is_error ? 'E' : $status]) ];
 
 		VmModel::getModel('orders')->updateStatusForOneOrder($Details->virtuemart_order_id, $upd);
 
@@ -166,6 +122,88 @@ class plgVmPaymentPayneteasy extends vmPSPlugin {
 	}
 
 
+
+	public function plgVmConfirmedOrder(VirtueMartCart $Cart, array $aOrder) {
+		if (!($Method = $this->getVmPluginMethod($Cart->virtuemart_paymentmethod_id)))
+			return null;
+
+		if (!$this->selectedThisElement($Method->payment_element))
+			return false;
+
+		$Details = $this->Details($aOrder);
+
+		try
+			{ $aResult = self::Api($Method)->sale(array_merge($this->saleData($Cart, $Details), $Method->IS_FORM ? [] : $this->cardData())); }
+		catch (Exception $e) {
+			vRequest::setVar('html', $this->updateOrder_html($Details, $Method, 'D'));
+			return null;
+		}
+
+		[ $Cart->_confirmDone, $Cart->_dataValidated ] = [ false, false ];
+
+		$Cart->setCartIntoSession();
+		$this->updateDetails($Details, $aResult);
+
+		JFactory::getApplication()->redirect($aResult['redirect-url'] ?? $this->returnUrl($Details));
+	}
+
+	public function plgVmOnPaymentResponseReceived(string &$html, &$paymentResponse) {
+		if (!($Method = $this->getVmPluginMethod( vRequest::getInt('methodId') )))
+			return null;
+
+		if (!$this->selectedThisElement($Method->payment_element))
+			return false;
+
+		$aOrder = $this->aOrder( vRequest::getInt('orderId') );
+		$Details = $this->Details($aOrder, true);
+
+		$aResult = self::Api($Method)->status([ 'client_orderid' => $Details->order_number, 'orderid' => $Details->payneteasy_order_id ]);
+
+		if (isset($aResult['html'])) {
+			echo $aResult['html'];
+			JFactory::getApplication()->close();
+		}
+
+		if ('processing' == ($status = $aResult['status'])) {
+			[ $paymentResponse, $html ] = [ '', self::tickerHtml(vRequest::getInt('orderId'), vRequest::getInt('methodId')) ];
+			return;
+		}
+
+		$this->updateDetails($Details, $aResult);
+
+		$html = $this->updateOrder_html($Details, $Method, ['approved'=>'F'][$status] ?? 'D', 'error' == $status)
+			.self::clearBrowserCartForm();
+
+		'approved' == $status
+			? VirtueMartCart::getCart()->emptyCart()
+			: ($paymentResponse = '');
+	}
+
+	private static function tickerHtml(int $orderId, int $methodId): string {
+		return sprintf(<<<HTML
+				<div style="width:100%%;text-align:center"><h1>%s</h1><a href="%s" id="pne_ticker">%s</a></div>
+				<script>(()=>{let t=document.getElementById("pne_ticker"),s=t.innerHTML,p=0
+				,iv=setInterval(()=>{if(++p<=s.length){if(s[p]==" ")p++
+				;t.innerHTML="<span style='color:#09C'>"+s.slice(0,p)+"</span>"+s.slice(p)}
+				else{clearInterval(iv);t.click()}},300)})()</script>
+			HTML,
+				self::_T('PAYMENT_PROCESSING'),
+				JRoute::_(JUri::root()."index.php?option=com_virtuemart&view=pluginresponse&task=pluginresponsereceived&orderId=$orderId&methodId=$methodId"),
+				self::_T('CHECK_STATUS'));
+	}
+
+	private static function clearBrowserCartForm(): string
+			{ return '<script>"credit_card_number card_printed_name expire_month expire_year".split(" ").forEach(k=>sessionStorage.removeItem("pne_"+k))</script>'; }
+
+	public function plgVmOnUpdateOrderPayment(&$Order, $oldOrderStatus) {
+		if (!($Method = $this->getVmPluginMethod($Order->virtuemart_paymentmethod_id)))
+			return null;
+
+		if (!$this->selectedThisElement($Method->payment_element))
+			return false;
+	
+		return true;
+	}
 
 	public function plgVmOnShowOrderBEPayment($virtuemart_order_id, $payment_method_id) {
 		if (!$this->selectedThisByMethodId ($payment_method_id))
@@ -192,24 +230,51 @@ class plgVmPaymentPayneteasy extends vmPSPlugin {
 		$paymentCurrencyId = $Method->payment_currency;
 	}
 
+	public function plgVmDisplayListFEPayment(VirtueMartCart $Cart, $selected, &$htmlIn) {
+		if ($this->getPluginMethods($Cart->vendorId) == 0)
+			return false;
+
+		[ $idN, $ret ] = [ "virtuemart_{$this->_psType}method_id", false ];
+
+		foreach ($this->methods as $Method) {
+			if (isset($htmlIn[$this->_psType][$Method->$idN])) {
+				$ret = true;
+				continue;
+			}
+
+			if (!$this->checkConditions($Cart, $Method, $Cart->cartPrices))
+				continue;
+
+			$prices = $Cart->cartPrices;
+			$salesPrice = $this->setCartPrices($Cart, $prices, $Method);
+			$Method->{"{$this->_psType}_name"} = $this->renderPluginName($Method);
+
+			$html = $this->getPluginHtml($Method, $selected, $salesPrice);
+
+			if (!$Method->IS_FORM)
+				$html .= $this->renderByLayout('cardform', [ 'Method' => $Method ]);
+
+			$htmlIn[$this->_psType][$Method->$idN] = $html;
+			$ret = true;
+		}
+
+		return $ret;
+	}
+
 	public function plgVmDeclarePluginParamsPaymentVM3(&$data)
 		{ return $this->declarePluginParams('payment', $data); } 
 
 	public function plgVmSetOnTablePluginParamsPayment($name, $id, &$table)
 		{ return $this->setOnTablePluginParams($name, $id, $table); }
 
-	public function plgVmDisplayListFEPayment(VirtueMartCart $Cart, $selected, &$htmlIn)
-		{ return $this->displayListFE($Cart, $selected, $htmlIn); }
-
 	public function plgVmOnShowOrderFEPayment($virtuemart_order_id, $virtuemart_paymentmethod_id, &$payment_name)
 		{ $this->onShowOrderFE($virtuemart_order_id, $virtuemart_paymentmethod_id, $payment_name); }
 
-
+	public function plgVmOnStoreInstallPaymentPluginTable($jplugin_id)
+		{ return $this->onStoreInstallPluginTable($jplugin_id); }
 
 	/*
 	public function getVmPluginCreateTableSQL() { error_log($msg=__CLASS__.'::'.__FUNCTION__);die($msg); }
-	
-	public function plgVmOnStoreInstallPaymentPluginTable($jplugin_id) { error_log($msg=__CLASS__.'::'.__FUNCTION__);die($msg); }
 
 	public function setPluginConfig($pluginConfig) { error_log($msg=__CLASS__.'::'.__FUNCTION__);die($msg); }
 
@@ -225,5 +290,6 @@ class plgVmPaymentPayneteasy extends vmPSPlugin {
 
 	public function paymentrefundNotification() { error_log($msg=__CLASS__.'::'.__FUNCTION__);die($msg); }
 
-	protected function updateDeleteOldOrderStatus($orderId, $historyStatus) { error_log($msg=__CLASS__.'::'.__FUNCTION__);die($msg); }*/
+	protected function updateDeleteOldOrderStatus($orderId, $historyStatus) { error_log($msg=__CLASS__.'::'.__FUNCTION__);die($msg); }
+	*/
 }

@@ -1,44 +1,53 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <extension version="2.5" type="plugin" group="vmpayment" method="upgrade">
-    <name>Payneteasy payment</name>
-    <creationDate>March 2026</creationDate>
-    <author>Payneteasy</author>
-    <authorUrl>https://payneteasy.com/</authorUrl>
-    <copyright>Copyright (C) 2026 Payneteasy. All rights reserved.</copyright>
-    <license>Property of Payneteasy</license>
-    <version>1.0.0</version>
-    <description>Payneteasy payment plugin for VirtueMart</description>
+	<name>Payneteasy payment</name>
+	<creationDate>March 2026</creationDate>
+	<author>Payneteasy</author>
+	<authorUrl>https://payneteasy.com/</authorUrl>
+	<copyright>Copyright (C) 2026 Payneteasy. All rights reserved.</copyright>
+	<license>Property of Payneteasy</license>
+	<version>1.1.0</version>
+	<description>Payneteasy payment plugin for VirtueMart</description>
 
-    <files>
-        <filename plugin="payneteasy">payneteasy.php</filename>
-				<folder>assets</folder>
-				<folder>fields</folder>
-        <folder>language</folder>
-        <folder>lib</folder>
-    </files>
+	<files>
+		<filename plugin="payneteasy">payneteasy.php</filename>
+		<filename>Payneteasy.lib.php</filename>
+		<filename>install.php</filename>
+		<folder>assets</folder>
+		<folder>fields</folder>
+		<folder>language</folder>
+		<folder>tmpl</folder>
+	</files>
 
-    <vmconfig>
-        <fields name="params">
-            <fieldset name="api" addfieldpath="/plugins/vmpayment/payneteasy/fields">
-								<field type="vmtitle" default="PAYNETEASY_GATEWAY_SETTINGS" description=""/>
-                <field name="checkConditionsCore" value="1" default="1" type="hidden"/>
-								<field name="url_live" type="text" label="PAYNETEASY_URL_LIVE" default="https://gate.payneteasy.com/" size="48"/>
-								<field name="url_sandbox" type="text" label="PAYNETEASY_URL_SANDBOX" default="https://demo.payneteasy.com/" size="48"/>
-								<field name="is_sandbox" type="radio" label="PAYNETEASY_MODE" default="1">
-									<option value="0">PAYNETEASY_MODE_LIVE</option>
-									<option value="1">PAYNETEASY_MODE_SANDBOX</option>
-								</field>
-								<field name="end_point" type="text" label="PAYNETEASY_END_POINT" required="true"/>
-								<field name="login" type="text" label="PAYNETEASY_LOGIN" required="true"/>
-								<field name="control_key" type="text" label="PAYNETEASY_CONTROL_KEY" required="true" size="50"/>
+	<scriptfile>install.php</scriptfile>
 
-								<field type="vmtitle" default="PAYNETEASY_ADMIN_SETTINGS" description=""/>
-								<field name="log_trace" type="radio" label="PAYNETEASY_LOG_TRACE" default="0">
-									<option value="0">COM_VIRTUEMART_NO</option>
-									<option value="1">COM_VIRTUEMART_YES</option>
-								</field>
-								<field type="payneteasycss" default=""/>
-            </fieldset>
-        </fields>
-    </vmconfig>
+	<languages>
+		<language tag="en-GB">language/en-GB/en-GB.plg_vmpayment_payneteasy.ini</language>
+	</languages>
+
+	<vmconfig>
+		<fields name="params">
+			<fieldset name="api" addfieldpath="/plugins/vmpayment/payneteasy/fields">
+				<field type="pneassets"/>
+				<field name="IS_LIVE" type="pnefield" fieldtype="checkbox" label="PAYNETEASY_IS_LIVE"/>
+				<field name="IS_MULTICURR" type="pnefield" fieldtype="checkbox" label="PAYNETEASY_IS_MULTICURR"/>
+
+				<field name="SANDBOX_URL" type="pnefield" fieldtype="text" label="PAYNETEASY_SANDBOX_URL" required="true"/>
+				<field name="SANDBOX_END_POINT" type="pnefield" fieldtype="text" label="PAYNETEASY_SANDBOX_END_POINT" required="true"/>
+				<field name="SANDBOX_LOGIN" type="pnefield" fieldtype="text" label="PAYNETEASY_SANDBOX_LOGIN" required="true"/>
+				<field name="SANDBOX_CONTROL_KEY" type="pnefield" fieldtype="text" label="PAYNETEASY_SANDBOX_CONTROL_KEY" required="true"/>
+
+				<field name="LIVE_URL" type="pnefield" fieldtype="text" label="PAYNETEASY_LIVE_URL" required="true"/>
+				<field name="LIVE_END_POINT" type="pnefield" fieldtype="text" label="PAYNETEASY_LIVE_END_POINT" required="true"/>
+				<field name="LIVE_LOGIN" type="pnefield" fieldtype="text" label="PAYNETEASY_LIVE_LOGIN" required="true"/>
+				<field name="LIVE_CONTROL_KEY" type="pnefield" fieldtype="text" label="PAYNETEASY_LIVE_CONTROL_KEY" required="true"/>
+
+				<field name="IS_FORM" type="pnefield" fieldtype="checkbox" label="PAYNETEASY_IS_FORM"/>
+			</fieldset>
+		</fields>
+	</vmconfig>
+
+	<updateservers>
+		<server type="extension" name="PayNetEasy Update Site"><![CDATA[https://raw.githubusercontent.com/payneteasy/php-plugin-joomla-2/refs/heads/master/installation/update.xml]]></server>
+	</updateservers>
 </extension>
