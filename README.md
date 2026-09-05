@@ -9,6 +9,6 @@ with VirtueMart 4.4.10
 2. Click "Install" / "Extensions" "<br><img src="installation/1-2.png" alt="plugin installation steps 1-2" width="450"/>
 3. Then upload file <a href="https://github.com/payneteasy/php-plugin-joomla-2/releases/download/v1.1.0/payneteasy.zip">payneteasy.zip</a><br><img src="installation/3.png" alt="plugin installation step 3" width="450"/>
 4. And click "payment method settings"<br><img src="installation/4.png" alt="plugin installation step 4" width="450"/>
-5. Then click "Configure" section to fill necessary parameters
+5. Then click "configuration" section to fill necessary parameters
 6. And "Save" your settings<br><img src="installation/5-6.png" alt="plugin installation steps 5-6" width="450"/>
 7. Installation and configuration completed.

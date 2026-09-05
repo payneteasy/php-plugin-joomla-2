@@ -10,7 +10,7 @@
         <version>1.1.0</version>
         <infourl title="Payneteasy">https://payneteasy.com</infourl>
         <downloads>
-            <downloadurl type="full" format="zip">http://test.localhost/joomla-virtuemart/payneteasy.zip</downloadurl>
+            <downloadurl type="full" format="zip">https://github.com/payneteasy/php-plugin-joomla-2/releases/download/v1.1.0/payneteasy.zip</downloadurl>
         </downloads>
 				<sha256>20cce92f9602e75f0ab9b65050233463d1ecae4f21cf19b50dc6c32193ec9abf</sha256>
         <tags>
