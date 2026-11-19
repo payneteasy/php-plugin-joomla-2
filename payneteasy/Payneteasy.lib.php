@@ -12,12 +12,14 @@ namespace Payneteasy {
 		if (is_object($arg))
 			$arg = get_object_vars($arg);
 
+		// Log only technical fields
+		static $logged = [ 'amount', 'client_orderid', 'currency', 'error-code', 'error-message', 'merchant-order-id',
+			'orderid', 'paynet-order-id', 'serial-number', 'status', 'type' ];
+
 		ksort($arg);
 		foreach ($arg as $key => $value) {
-			if ($key == 'cvv2')
-				$value = str_repeat('*', strlen($value));
-			elseif ($key == 'credit_card_number')
-				$value = (strlen($value) > 4) ? str_repeat('*', strlen($value)-4).substr($value, -4) : $value;
+			if (!in_array($key, $logged, true) || !is_scalar($value))
+				continue;
 
 			error_log("$prefix'$key' => '$value'");
 		}
