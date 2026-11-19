@@ -12,12 +12,14 @@ namespace Payneteasy {
 		if (is_object($arg))
 			$arg = get_object_vars($arg);
 
+		// Log only technical fields
+		static $logged = [ 'amount', 'client_orderid', 'currency', 'error-code', 'error-message', 'merchant-order-id',
+			'orderid', 'paynet-order-id', 'serial-number', 'status', 'type' ];
+
 		ksort($arg);
 		foreach ($arg as $key => $value) {
-			if ($key == 'cvv2')
-				$value = str_repeat('*', strlen($value));
-			elseif ($key == 'credit_card_number')
-				$value = (strlen($value) > 4) ? str_repeat('*', strlen($value)-4).substr($value, -4) : $value;
+			if (!in_array($key, $logged, true) || !is_scalar($value))
+				continue;
 
 			error_log("$prefix'$key' => '$value'");
 		}
@@ -57,11 +59,11 @@ namespace Payneteasy {
 		private bool $changed = false;
 		private $on_save, $on_input_key, $on_uninstall, $cfg = [
 			# [ value, regexp, shown name, is_hidden  ]
-			'SANDBOX_URL' => [ '', '|^https?://(?:\\w+(?:-\\w+)*\\.)+\\w+/$|', 'Sandbox URL' ],
+			'SANDBOX_URL' => [ '', '|^https://(?:\\w+(?:-\\w+)*\\.)+\\w+/$|', 'Sandbox URL' ],
 			'SANDBOX_END_POINT' => [ '', '/^\d+$/', 'Sandbox End point Id' ],
 			'SANDBOX_LOGIN' => [ '', '/^[a-z][\\w-]*\\w$/i', 'Sandbox Login' ],
 			'SANDBOX_CONTROL_KEY' => [ '', '/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i', 'Sandbox Control key' ],
-			'LIVE_URL' => [ '', '|^https?://(?:\\w+(?:-\\w+)*\\.)+\\w+/$|', 'Live URL' ],
+			'LIVE_URL' => [ '', '|^https://(?:\\w+(?:-\\w+)*\\.)+\\w+/$|', 'Live URL' ],
 			'LIVE_END_POINT' => [ '', '/^\d+$/', 'Live End point Id' ],
 			'LIVE_LOGIN' => [ '', '/^[a-z][\\w-]*\\w$/i', 'Live Login' ],
 			'LIVE_CONTROL_KEY' => [ '', '/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i', 'Live Control key' ],
@@ -246,7 +248,7 @@ namespace Payneteasy {
 		public function status(array $data): array
 			{ return $this->execute('status', $this->signed($data, "{$this->login}{$data['client_orderid']}{$data['orderid']}{$this->control_key}")); }
 
-		private function signed(array $data, string $str=null, bool $add_login=false): array {
+		private function signed(array $data, ?string $str=null, bool $add_login=false): array {
 			if (isset($str) || $add_login)
 				$data['login'] = $this->login;
 
@@ -278,8 +280,11 @@ namespace Payneteasy {
 			curl_setopt_array($Curl, [
 				CURLOPT_HEADER					=> 0,
 				CURLOPT_USERAGENT				=> self::USERAGENT,
-				CURLOPT_SSL_VERIFYHOST	=> 0,
-				CURLOPT_SSL_VERIFYPEER	=> 0,
+				CURLOPT_SSL_VERIFYHOST	=> 2,
+				CURLOPT_SSL_VERIFYPEER	=> 1,
+				CURLOPT_PROTOCOLS				=> CURLPROTO_HTTPS,
+				CURLOPT_CONNECTTIMEOUT	=> 10,
+				CURLOPT_TIMEOUT					=> 60,
 				CURLOPT_POST						=> 1,
 				CURLOPT_RETURNTRANSFER	=> 1,
 				CURLOPT_POSTFIELDS			=> http_build_query($data) ]);

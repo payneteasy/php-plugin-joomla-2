@@ -18,9 +18,8 @@
 				return
 
 			var el = document.querySelector('[name="'+name+'"]')
-			var saved = sessionStorage.getItem('pne_'+name)
-			if (el && saved && !el.value)
-				el.value = saved
+			// Card fields are not kept in the browser
+			sessionStorage.removeItem('pne_'+name)
 		})
 	}
 
@@ -59,8 +58,6 @@
 			validateField($('[name="expire_year"]'))
 		if (e.target.name == 'expire_year')
 			validateField($('[name="expire_month"]'))
-		if (e.target.name != 'cvv2')
-			sessionStorage.setItem('pne_'+e.target.name, e.target.value)
 	})
 
 	document.addEventListener('click', e => {
