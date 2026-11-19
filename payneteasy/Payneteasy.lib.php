@@ -57,11 +57,11 @@ namespace Payneteasy {
 		private bool $changed = false;
 		private $on_save, $on_input_key, $on_uninstall, $cfg = [
 			# [ value, regexp, shown name, is_hidden  ]
-			'SANDBOX_URL' => [ '', '|^https?://(?:\\w+(?:-\\w+)*\\.)+\\w+/$|', 'Sandbox URL' ],
+			'SANDBOX_URL' => [ '', '|^https://(?:\\w+(?:-\\w+)*\\.)+\\w+/$|', 'Sandbox URL' ],
 			'SANDBOX_END_POINT' => [ '', '/^\d+$/', 'Sandbox End point Id' ],
 			'SANDBOX_LOGIN' => [ '', '/^[a-z][\\w-]*\\w$/i', 'Sandbox Login' ],
 			'SANDBOX_CONTROL_KEY' => [ '', '/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i', 'Sandbox Control key' ],
-			'LIVE_URL' => [ '', '|^https?://(?:\\w+(?:-\\w+)*\\.)+\\w+/$|', 'Live URL' ],
+			'LIVE_URL' => [ '', '|^https://(?:\\w+(?:-\\w+)*\\.)+\\w+/$|', 'Live URL' ],
 			'LIVE_END_POINT' => [ '', '/^\d+$/', 'Live End point Id' ],
 			'LIVE_LOGIN' => [ '', '/^[a-z][\\w-]*\\w$/i', 'Live Login' ],
 			'LIVE_CONTROL_KEY' => [ '', '/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i', 'Live Control key' ],
@@ -278,8 +278,11 @@ namespace Payneteasy {
 			curl_setopt_array($Curl, [
 				CURLOPT_HEADER					=> 0,
 				CURLOPT_USERAGENT				=> self::USERAGENT,
-				CURLOPT_SSL_VERIFYHOST	=> 0,
-				CURLOPT_SSL_VERIFYPEER	=> 0,
+				CURLOPT_SSL_VERIFYHOST	=> 2,
+				CURLOPT_SSL_VERIFYPEER	=> 1,
+				CURLOPT_PROTOCOLS				=> CURLPROTO_HTTPS,
+				CURLOPT_CONNECTTIMEOUT	=> 10,
+				CURLOPT_TIMEOUT					=> 60,
 				CURLOPT_POST						=> 1,
 				CURLOPT_RETURNTRANSFER	=> 1,
 				CURLOPT_POSTFIELDS			=> http_build_query($data) ]);
