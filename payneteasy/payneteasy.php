@@ -157,6 +157,17 @@ class plgVmPaymentPayneteasy extends vmPSPlugin {
 		$aOrder = $this->aOrder( vRequest::getInt('orderId') );
 		$Details = $this->Details($aOrder, true);
 
+		// Only orders paid with this method and sent to the gateway
+		$BT = $aOrder['details']['BT'] ?? $Details;
+		if ((int)$BT->virtuemart_paymentmethod_id !== (int)$Method->virtuemart_paymentmethod_id || empty($Details->payneteasy_order_id))
+			return null;
+
+		// Change the status only of an order waiting for payment
+		if (!in_array($BT->order_status, [ 'P', 'U' ], true)) {
+			[ $paymentResponse, $html ] = [ '', '' ];
+			return;
+		}
+
 		$aResult = self::Api($Method)->status([ 'client_orderid' => $Details->order_number, 'orderid' => $Details->payneteasy_order_id ]);
 
 		if (isset($aResult['html'])) {
