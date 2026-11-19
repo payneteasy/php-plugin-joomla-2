@@ -248,7 +248,7 @@ namespace Payneteasy {
 		public function status(array $data): array
 			{ return $this->execute('status', $this->signed($data, "{$this->login}{$data['client_orderid']}{$data['orderid']}{$this->control_key}")); }
 
-		private function signed(array $data, string $str=null, bool $add_login=false): array {
+		private function signed(array $data, ?string $str=null, bool $add_login=false): array {
 			if (isset($str) || $add_login)
 				$data['login'] = $this->login;
 
