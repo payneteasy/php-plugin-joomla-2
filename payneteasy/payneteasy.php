@@ -168,14 +168,20 @@ class plgVmPaymentPayneteasy extends vmPSPlugin {
 			return;
 		}
 
-		$aResult = self::Api($Method)->status([ 'client_orderid' => $Details->order_number, 'orderid' => $Details->payneteasy_order_id ]);
+		try
+			{ $aResult = self::Api($Method)->status([ 'client_orderid' => $Details->order_number, 'orderid' => $Details->payneteasy_order_id ]); }
+		catch (Exception $e)
+			{ $aResult = []; }
 
 		if (isset($aResult['html'])) {
 			echo $aResult['html'];
 			JFactory::getApplication()->close();
 		}
 
-		if ('processing' == ($status = $aResult['status'])) {
+		// Only a final gateway status changes the order. "processing", an unknown
+		// status or a failed status request (no status) leave it waiting for payment.
+		$status = trim((string) ($aResult['status'] ?? ''));
+		if (!in_array($status, [ 'approved', 'declined', 'filtered', 'error' ], true)) {
 			[ $paymentResponse, $html ] = [ '', self::tickerHtml(vRequest::getInt('orderId'), vRequest::getInt('methodId')) ];
 			return;
 		}
