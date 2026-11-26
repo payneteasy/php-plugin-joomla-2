@@ -44,6 +44,9 @@ namespace Payneteasy {
 		}
 	}
 
+	# No usable answer to a request that may have reached the gateway (timeout, broken connection, server error): its result is not known
+	class PneUnknownResultException extends PneException {}
+
 	class PneConfigException extends \Exception {
 		public function __construct(string $message, bool $verbose) {
 			parent::__construct($message, 0, null);
@@ -293,6 +296,7 @@ namespace Payneteasy {
 				curl_setopt($Curl, CURLOPT_CONNECTTIMEOUT, 10);
 
 			$response = curl_exec($Curl);
+			$errno = curl_errno($Curl);
 
 			if ($err = curl_error($Curl))
 				$errmsg = "Card processing error, CURL error: '$err'";
@@ -301,7 +305,10 @@ namespace Payneteasy {
 
 			curl_close($Curl);
 
-			if (!empty($errmsg))
+			# timeout, empty reply, broken connection or a gateway server error: the request may have been processed
+			if (in_array($errno, [ 28, 52, 56 ], true) || (!$errno && (!empty($errmsg) ? $err >= 500 : empty($response))))
+				throw new PneUnknownResultException($errmsg ?? 'Card processing response is empty', $data);
+			elseif (!empty($errmsg))
 				throw new PneException($errmsg, $data);
 			elseif (empty($response))
 				throw new PneException('Card processing response is empty', $data);
